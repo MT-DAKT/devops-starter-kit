@@ -1,9 +1,4 @@
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-sqlalchemy==2.0.35
-psycopg2-binary==2.9.10
-prometheus_client==0.21.0
-pydantic==2.9.2
+-r requirements.txt
 pytest==8.3.3
 httpx==0.27.2
 ruff==0.7.0
