@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import Column, Integer, String
 
 from app.database import Base
 
