@@ -67,6 +67,45 @@
         regexp: '127\.0\.0\.1'
         replace: "{{ inventory_hostname }}"
 
+    - name: Créer le dossier du runner
+      file:
+        path: /home/ubuntu/actions-runner
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+
+    - name: Télécharger le runner GitHub Actions
+      unarchive:
+        src: https://github.com/actions/runner/releases/download/v2.320.0/actions-runner-linux-x64-2.320.0.tar.gz
+        dest: /home/ubuntu/actions-runner
+        remote_src: true
+        owner: ubuntu
+        group: ubuntu
+      args:
+        creates: /home/ubuntu/actions-runner/config.sh
+
+    - name: Configurer le runner (enregistrement auprès de GitHub)
+      become: true
+      become_user: ubuntu
+      shell: |
+        ./config.sh --url https://github.com/MT-DAKT/devops-starter-kit \
+          --token "{{ github_runner_token }}" \
+          --name k3s-server --unattended --replace
+      args:
+        chdir: /home/ubuntu/actions-runner
+        creates: /home/ubuntu/actions-runner/.runner
+
+    - name: Installer le runner comme service systemd
+      shell: ./svc.sh install ubuntu
+      args:
+        chdir: /home/ubuntu/actions-runner
+        creates: /etc/systemd/system/actions.runner.*.service
+
+    - name: Démarrer le runner via le script officiel
+      shell: ./svc.sh start
+      args:
+        chdir: /home/ubuntu/actions-runner
+
   handlers:
     - name: Redémarrer k3s
       systemd:

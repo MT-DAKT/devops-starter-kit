@@ -35,21 +35,10 @@ jobs:
 
   deploy:
     needs: build-and-push
-    runs-on: ubuntu-latest
+    runs-on: self-hosted   # ← au lieu de ubuntu-latest
 
     steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Installer kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Configurer l'accès au cluster
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
       - name: Déployer la nouvelle image
         run: |
-          kubectl set image deployment/api api=tmodibo/devops-starter-kit:${{ needs.build-and-push.outputs.image_tag }}
-          kubectl rollout status deployment/api --timeout=120s
+          sudo k3s kubectl set image deployment/api api=tmodibo/devops-starter-kit:${{ needs.build-and-push.outputs.image_tag }}
+          sudo k3s kubectl rollout status deployment/api --timeout=120s
