@@ -28,8 +28,11 @@ def setup_metrics(app: FastAPI) -> None:
 
         # On utilise le template de route ("/users/{user_id}") et non l'URL réelle
         # ("/users/42") pour éviter l'explosion de cardinalité vue au chapitre 9.
+        # Si aucune route ne correspond (404), on regroupe tout sous "unmatched"
+        # plutôt que d'utiliser le chemin brut — sinon chaque tentative de bot
+        # créerait sa propre série temporelle.
         route = request.scope.get("route")
-        path = route.path if route else request.url.path
+        path = route.path if route else "unmatched"
 
         REQUEST_COUNT.labels(request.method, path, response.status_code).inc()
         REQUEST_LATENCY.labels(request.method, path).observe(duration)
