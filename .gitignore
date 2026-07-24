@@ -20,4 +20,6 @@ venv/
 *.tfstate.backup
 
 # OS
-.DS_Store
+.DS_Storekube
+config
+infra/ansible/kubeconfig
