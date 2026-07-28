@@ -23,3 +23,5 @@ venv/
 .DS_Storekube
 config
 infra/ansible/kubeconfig
+infra/terraform/aws/
+infra/terraform/*.zip

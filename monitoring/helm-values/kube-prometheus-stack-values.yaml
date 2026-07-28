@@ -1,0 +1,23 @@
+grafana:
+  enabled: true
+  adminPassword: "changeme-dans-un-vrai-projet"
+  service:
+    type: ClusterIP
+
+prometheus:
+  prometheusSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    retention: 7d
+    serviceMonitorSelectorNilUsesHelmValues: false
+
+alertmanager:
+  enabled: true
+
+defaultRules:
+  create: true
