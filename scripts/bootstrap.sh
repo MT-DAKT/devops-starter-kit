@@ -37,20 +37,8 @@ sleep 30
 
 # --- Étape 2 : Configuration k3s ---
 echo "==> [2/4] Configuration du cluster k3s (Ansible)"
-
-if [ -z "${GITHUB_RUNNER_TOKEN:-}" ]; then
-  echo "Erreur : la variable GITHUB_RUNNER_TOKEN est requise."
-  echo ""
-  echo "Génère un token sur GitHub :"
-  echo "  Settings > Actions > Runners > New self-hosted runner"
-  echo ""
-  echo "Puis relance :"
-  echo "  GITHUB_RUNNER_TOKEN=xxx ./scripts/bootstrap.sh"
-  exit 1
-fi
-
 cd infra/ansible
-ansible-playbook -i inventory.ini playbook.yml --extra-vars "github_runner_token=${GITHUB_RUNNER_TOKEN}"
+ansible-playbook -i inventory.ini playbook.yml
 cd ../..
 
 export KUBECONFIG="$(pwd)/infra/ansible/kubeconfig"

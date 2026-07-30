@@ -1,5 +1,3 @@
-mkdir -p docs
-cat > docs/ARCHITECTURE.md << 'EOF'
 # Architecture
 
 ## Vue d'ensemble
@@ -12,11 +10,11 @@ flowchart TB
     subgraph GH["GitHub"]
         Repo[Repo Git]
         CI[CI: lint + tests]
-        CD[CD: build + deploy]
+        CD[CD: build + push image + update manifest]
     end
     subgraph AWS["AWS EC2"]
-        Runner[Runner GitHub auto-hébergé]
         subgraph K3s["Cluster k3s"]
+            Argo[ArgoCD]
             API[Deployment api x2]
             PG[Deployment postgres]
             Mon[Prometheus + Grafana]
@@ -28,18 +26,21 @@ flowchart TB
     Repo --> CI
     Repo --> CD
     CD -->|build + push image| Hub
-    CD -->|déclenche job deploy| Runner
-    Runner -->|kubectl set image| K3s
+    CD -->|commit nouveau tag dans k8s/base/| Repo
+    Argo -->|pull: surveille k8s/base/| Repo
+    Argo -->|sync automatique| API
     Hub -.pull image.-> API
 ```
 
 ## Pourquoi chaque choix technique
 
-### Runner auto-hébergé plutôt qu'exposer l'API Kubernetes
+### GitOps avec ArgoCD plutôt qu'un déploiement push direct
 
-L'approche naturelle serait de laisser GitHub Actions (hébergé, IP dynamiques) se connecter directement à l'API Kubernetes du cluster. Mais la liste des IP officielles GitHub Actions compte plusieurs milliers de plages CIDR — impraticable à gérer dans un security group AWS (limite de 60 règles).
+La première version de ce projet utilisait un modèle **push** : le pipeline CD se connectait directement à l'API Kubernetes pour déployer (`kubectl set image`). Comme GitHub Actions utilise des runners aux IP dynamiques et que la liste officielle des IP GitHub compte plusieurs milliers de plages CIDR (impraticable à gérer dans un security group AWS), la solution initiale était un **runner auto-hébergé** installé directement sur le serveur EC2.
 
-La solution retenue : un agent GitHub Actions installé directement sur le serveur EC2, qui établit une connexion **sortante** vers GitHub (jamais bloquée par un firewall). Le job de déploiement s'exécute localement sur la machine, avec `kubectl` en local — l'API Kubernetes (port 6443) n'a besoin d'être ouverte qu'à l'IP de l'administrateur, jamais au monde extérieur.
+Cette approche fonctionnait, mais ajoutait de la complexité (un service supplémentaire à maintenir, à sécuriser, à mettre à jour) pour résoudre un problème que le modèle **pull** de GitOps résout plus élégamment : ArgoCD tourne **dans** le cluster et surveille en continu le dossier `k8s/base/` du repo Git. Le pipeline CD se contente de modifier le tag d'image dans un fichier YAML et de le committer — aucune connexion entrante vers le cluster n'est jamais nécessaire, ni runner, ni ouverture de port.
+
+Bénéfice supplémentaire : le `selfHeal` d'ArgoCD corrige automatiquement toute dérive manuelle du cluster (`kubectl edit` fait par erreur, par exemple) — un filet de sécurité qu'un déploiement push classique n'offre pas.
 
 ### k3s plutôt que Kubernetes complet ou EKS
 
@@ -47,7 +48,7 @@ k3s est une distribution Kubernetes allégée, pensée pour tourner sur une seul
 
 ### Séparation CI / CD
 
-`ci.yml` (lint + tests, sur GitHub-hosted runner) et `cd.yml` (build + deploy, avec le job deploy sur le runner auto-hébergé) sont deux fichiers séparés. La CI valide la qualité du code sur chaque pull request, indépendamment de tout déploiement. Le CD ne se déclenche que sur `main`, et seulement après un build réussi.
+`ci.yml` (lint + tests, sur GitHub-hosted runner) et `cd.yml` (build + push image + mise à jour du manifest Git) sont deux fichiers séparés. La CI valide la qualité du code sur chaque pull request, indépendamment de tout déploiement. Le CD ne se déclenche que sur `main`, et seulement après un build réussi — mais il ne fait plus que préparer le changement, c'est ArgoCD qui l'applique réellement.
 
 ### Prometheus + Grafana avec limites de ressources strictes
 
@@ -55,7 +56,7 @@ Sur une instance à ressources limitées, Prometheus et Grafana peuvent facileme
 
 ## Dimensionnement de l'instance
 
-Ce projet a été construit et testé sur une instance passée de `t3.small` (2 Go RAM) à `t3.medium` (4 Go RAM) — la première s'est révélée insuffisante une fois k3s, Postgres, l'app (2 répliques), le runner GitHub Actions et Prometheus/Grafana cumulés. Prévoir `t3.medium` au minimum pour une utilisation confortable de l'ensemble de la stack.
+Ce projet a été construit et testé sur une instance passée de `t3.small` (2 Go RAM) à `t3.medium` (4 Go RAM) — la première s'est révélée insuffisante une fois k3s, Postgres, l'app (2 répliques), Prometheus/Grafana et ArgoCD cumulés. Prévoir `t3.medium` au minimum pour une utilisation confortable de l'ensemble de la stack.
 
 ## Limites connues de cette V1
 
@@ -63,4 +64,4 @@ Ce projet a été construit et testé sur une instance passée de `t3.small` (2 
 - **IP publique non fixe** : sans IP élastique, l'IP change à chaque redémarrage de l'instance, nécessitant une mise à jour manuelle de `inventory.ini` et du kubeconfig (automatisable en V2).
 - **Un seul node** : pas de haute disponibilité réelle si le node tombe, malgré les 2 répliques de l'app (elles tournent toutes deux sur la même machine).
 - **API exposée en HTTP**, sans certificat TLS — à ajouter (Let's Encrypt via cert-manager) avant tout usage en production réelle.
-EOF
+- **ArgoCD accessible uniquement via port-forward** — pas encore exposé via un Ingress dédié avec authentification renforcée.

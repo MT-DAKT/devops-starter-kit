@@ -55,38 +55,44 @@ cat > ../ansible/inventory.ini << INV
 INV
 ```
 
-## Étape 5 — Générer un token de runner GitHub
-
-Sur ton repo GitHub : **Settings → Actions → Runners → New self-hosted runner**, copie le token affiché (expire après 1h).
-
-## Étape 6 — Configurer le serveur (k3s + runner)
-
-```bash
-cd ../ansible
-ansible-playbook -i inventory.ini playbook.yml --extra-vars "github_runner_token=TON_TOKEN"
-```
-
-## Étape 7 — Configurer les secrets GitHub
+## Étape 5 — Configurer les secrets GitHub
 
 Sur ton repo → **Settings → Secrets and variables → Actions**, crée :
 - `DOCKERHUB_USERNAME`
 - `DOCKERHUB_TOKEN` (token Read & Write)
 
-## Étape 8 — Déployer l'application
+Va aussi dans **Settings → Actions → General → Workflow permissions**, sélectionne **Read and write permissions** — nécessaire pour que le pipeline puisse committer la mise à jour du tag d'image dans `k8s/base/deployment.yaml`.
+
+## Étape 6 — Installer ArgoCD
 
 ```bash
-export KUBECONFIG=$(pwd)/kubeconfig
-cd ..
-kubectl apply -f k8s/base/
+export KUBECONFIG=$(pwd)/infra/ansible/kubeconfig
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl get pods -n argocd   # attendre que tout soit Running
 ```
 
-Crée le secret de connexion à la base de données (jamais commité) :
+Récupère le mot de passe admin initial :
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+## Étape 7 — Créer le secret de base de données
 
 ```bash
 kubectl create secret generic api-secrets \
   --from-literal=postgres-password='CHOISIS_UN_MOT_DE_PASSE' \
   --from-literal=database-url='postgresql://postgres:CHOISIS_UN_MOT_DE_PASSE@postgres-svc:5432/appdb'
 ```
+
+## Étape 8 — Connecter ArgoCD au repo
+
+```bash
+kubectl apply -f argocd/application.yaml
+```
+
+ArgoCD va détecter et déployer automatiquement tout ce qui se trouve dans `k8s/base/` — pas besoin de `kubectl apply -f k8s/base/` manuel.
 
 ## Étape 9 — Installer le monitoring
 
