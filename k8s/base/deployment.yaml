@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: tmodibo/devops-starter-kit:6afa7b9
+          image: tmodibo/devops-starter-kit:f5dbbce
           ports:
             - containerPort: 8000
           env:
