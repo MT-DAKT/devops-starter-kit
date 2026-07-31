@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/MT-DAKT/devops-starter-kit.git
     targetRevision: main
-    path: k8s/base
+    path: helm/devops-starter-kit
   destination:
     server: https://kubernetes.default.svc
     namespace: default
