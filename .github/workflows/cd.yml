@@ -43,14 +43,14 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Met à jour le tag d'image dans le manifest
+      - name: Met à jour le tag d'image dans values.yaml
         run: |
-          sed -i "s|image: tmodibo/devops-starter-kit:.*|image: tmodibo/devops-starter-kit:${{ needs.build-and-push.outputs.image_tag }}|" k8s/base/deployment.yaml
-
+          sed -i "s|tag: .*|tag: ${{ needs.build-and-push.outputs.image_tag }}|" helm/devops-starter-kit/values.yaml
+      
       - name: Commit et push le changement
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/base/deployment.yaml
+          git add helm/devops-starter-kit/values.yaml
           git commit -m "chore: déploie l'image ${{ needs.build-and-push.outputs.image_tag }} [skip ci]"
           git push
