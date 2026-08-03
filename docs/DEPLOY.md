@@ -86,13 +86,19 @@ kubectl create secret generic api-secrets \
   --from-literal=database-url='postgresql://postgres:CHOISIS_UN_MOT_DE_PASSE@postgres-svc:5432/appdb'
 ```
 
-## Étape 8 — Connecter ArgoCD au repo
+## Étape 8 — Connecter ArgoCD au chart Helm
 
 ```bash
 kubectl apply -f argocd/application.yaml
 ```
 
-ArgoCD va détecter et déployer automatiquement tout ce qui se trouve dans `k8s/base/` — pas besoin de `kubectl apply -f k8s/base/` manuel.
+ArgoCD va détecter et déployer automatiquement tout ce que génère le chart `helm/devops-starter-kit/` — pas de `helm install` manuel nécessaire pour l'app elle-même (Helm reste utilisé directement uniquement pour le monitoring, voir étape 9).
+
+Pour vérifier le rendu du chart avant de le laisser à ArgoCD :
+
+```bash
+helm template devops-starter-kit helm/devops-starter-kit/
+```
 
 ## Étape 9 — Installer le monitoring
 
@@ -122,10 +128,12 @@ Push un commit sur `main` pour valider que le pipeline CD déploie automatiqueme
 | `ErrImagePull` sur les pods `api` | Image pas encore poussée sur Docker Hub | Vérifie le pipeline CD dans GitHub Actions |
 | Certificat TLS invalide (`kubectl`) | IP publique absente du `tls-san` de k3s | Vérifie la tâche `tls-san` du playbook Ansible |
 | `No data` dans Grafana pour l'app | Le `Service` n'a pas de `metadata.labels` | Le `ServiceMonitor` filtre sur les labels du Service, pas son `selector` — voir `k8s/base/service.yaml` |
+| `app path does not exist` (ArgoCD) | Le chart Helm n'a pas été poussé sur GitHub avant la sync | `git add helm/ && git push`, puis Refresh dans ArgoCD |
+| Pipeline CD échoue sur `sed: can't read` | Le chemin ciblé par `sed` dans `cd.yml` ne correspond plus à la structure actuelle | Vérifier que `cd.yml` cible bien `helm/devops-starter-kit/values.yaml`, pas `k8s/base/deployment.yaml` |
+| Trivy bloque la CI sur des CVE sans correctif | Vulnérabilités OS sans patch amont disponible | Documenter et lister dans `app/.trivyignore` avec justification |
 
 ## Nettoyage
 
 ```bash
 ./scripts/teardown.sh
 ```
-EOF
