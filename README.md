@@ -71,7 +71,4 @@ Voir `docs/DEPLOY.md` pour la procédure détaillée, ou en résumé :
 cp infra/terraform/terraform.tfvars.example infra/terraform/terraform.tfvars
 # édite terraform.tfvars avec ton IP publique (curl https://ifconfig.me)
 
-GITHUB_RUNNER_TOKEN=xxx ./scripts/bootstrap.sh
 ```
-
-## Arborescence
