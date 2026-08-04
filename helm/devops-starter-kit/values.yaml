@@ -1,7 +1,7 @@
 api:
   image:
     repository: tmodibo/devops-starter-kit
-    tag: 469a3ff
+    tag: ef12eaa
   replicas: 2
   port: 8000
   resources:
