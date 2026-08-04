@@ -31,7 +31,7 @@ echo "==> Instance créée : $SERVER_IP"
 echo "==> Mise à jour de l'inventory Ansible"
 cat > infra/ansible/inventory.ini << INV
 [k3s_server]
-${SERVER_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_ed25519
+${SERVER_IP} ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_ed25519 ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 INV
 
 echo "==> Attente que l'instance soit prête pour SSH (30s)"
@@ -48,6 +48,7 @@ export KUBECONFIG="$(pwd)/infra/ansible/kubeconfig"
 # --- Étape 3 : ArgoCD ---
 echo "==> [3/5] Installation d'ArgoCD"
 kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl replace -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml --force 2>/dev/null || \
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 echo "==> Attente qu'ArgoCD soit prêt"
 kubectl wait --for=condition=available --timeout=180s deployment/argocd-server -n argocd
